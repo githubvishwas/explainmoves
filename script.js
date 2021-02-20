@@ -13,18 +13,29 @@ var _wname = "White", _bname = "Black", _color = 0, _bodyScale = 1;
 var _nncache = null;
 var _staticSortByChange = false;
 var evalUnit = 213;
-var board1 = null
+var myboard = null
 var game = new Chess()
 var curengeval = 0.0
 var _staticscore = 0.0
+var elem = document.getElementById('col1');
+var squareClass = 'square-55d63';
+var $myboard = null;
+var pgnEl = $('#pgn');
+var sdepth = 10
 function onDragStart (source, piece, position, orientation) {
   // do not pick up pieces if the game is over
   if (game.game_over()) return false
-
+	if (game.game_over() === true ||
+      (game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+      (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+    return false;
+  }
   // only pick up pieces for White
   //if (piece.search(/^b/) !== -1) return false
 }
-
+var getMove = function () {
+	makeBestMove()
+};
 function makeRandomMove () {
   var possibleMoves = game.moves()
 
@@ -33,9 +44,9 @@ function makeRandomMove () {
 
   var randomIdx = Math.floor(Math.random() * possibleMoves.length)
   game.move(possibleMoves[randomIdx])
-  board1.position(game.fen())
+  myboard.position(game.fen())
 }
-function updateStatus() {
+function updateStatus1() {
 	
 	var staticEvalList = getStaticEvalList(game.fen()), total = 0, ci = 5;
 	//console.log(staticEvalList)
@@ -120,19 +131,62 @@ function updateStatus() {
 	
 	//var openinfo = getOpenInfo(game.pgn(),game.fen())
 	//document.getElementById("openinfo").innerHTML = " Opening Info: " + openinfo[0].name;
-	//document.getElementById("cpscore").innerHTML = " Static score: " + staticscore;
+	document.getElementById("cpscore").innerHTML = " Static score: " + staticscore;
 	_staticscore = staticscore
 	//document.getElementById("staticevalwin").innerHTML = txt1
 	//document.getElementById("staticevallose").innerHTML = txt2
 }
-function makeEngineMove () {
+function makeEngineMove (makeMove) {
 	_engine.kill = false;
 	_engine.waiting = false;
 	_engine.send("stop");
 	_engine.send("ucinewgame");
 	var e = document.getElementById("sel1");
 	var level = e.options[e.selectedIndex].value;
-	_engine.send("setoption name Skill Level value " + 10); 
+	_engine.send("setoption name Skill Level value " + 1); 
+	_engine.score = null;
+	_engine.eval(game.fen(), function done(str) {
+	  _engine.waiting = true;
+	  
+	  var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+	  if (matches && matches.length > 1) {
+		var source  = matches[1][0] + matches[1][1] 
+		var target  = matches[1][2] + matches[1][3]  
+		//console.log(source)
+		//console.log(target)
+		if(makeMove == 1) {
+			var move = game.move({
+			from: source,
+			to: target,
+			promotion: 'q' // NOTE: always promote to a queen for example simplicity
+		  })
+
+		  // illegal move
+		  if (move === null) return 'snapback'
+		  myboard.position(game.fen())
+		  updateStatus()
+		  //console.log(getStaticEvalList(game.fen()))
+		}
+		
+	  }
+	},function info(depth, score, pv) {
+        if(depth == sdepth) {
+			console.log(score)
+			//document.getElementById("cpscore").innerHTML = " CP score: " + score/100;
+		}
+      });
+	
+	
+}
+function makeEngineMove1 () {
+	_engine.kill = false;
+	_engine.waiting = false;
+	_engine.send("stop");
+	_engine.send("ucinewgame");
+	var e = document.getElementById("sel1");
+	var level = e.options[e.selectedIndex].value;
+	console.log(level)
+	_engine.send("setoption name Skill Level value " + level); 
 	_engine.score = null;
 	_engine.eval(game.fen(), function done(str) {
 	  _engine.waiting = true;
@@ -152,7 +206,7 @@ function makeEngineMove () {
 
 	  // illegal move
 	  if (move === null) return 'snapback'
-	  board1.position(game.fen())
+	  myboard.position(game.fen())
 	  updateStatus()	
 	
 	 
@@ -160,7 +214,7 @@ function makeEngineMove () {
 	  
 	  }
 	},function info(depth, score, pv, str) {
-        if(depth == 10) {
+        if(depth == sdepth) {
 			//console.log(depth)
 			//console.log(score)
 			//console.log(pv)
@@ -227,35 +281,83 @@ function getEngineEval () {
 	
 	
 }
+var updateStatus = function() {
+  var status = '';
+
+  var moveColor = 'White';
+  if (game.turn() === 'b') {
+    moveColor = 'Black';
+  }
+
+  // checkmate?
+  if (game.in_checkmate() === true) {
+    alert('Game over, ' + moveColor + ' is in checkmate.')
+  }
+
+  // draw?
+  else if (game.in_draw() === true) {
+    alert('Game over, drawn position')
+  }
+
+  // game still on
+  else {
+    status = moveColor + ' to move';
+
+    // check?
+    if (game.in_check() === true) {
+      status += ', ' + moveColor + ' is in check';
+    }
+  }
+
+  pgnEl.html(game.pgn());
+  myboard.position(game.fen());
+};
+var makeBestMove = function () {
+    if (game.game_over()) {
+        alert('Game over');
+    }
+
+    
+	
+	makeEngineMove(1)
+    myboard.position(game.fen());
+	updateStatus();
+   
+    if (game.game_over()) {
+        alert('Game over');
+    }
+};
 function onDrop (source, target) {
-  // see if the move is legal
-  //console.log(game.turn())
-  //console.log(source)
-  //console.log(target)
   
   var move = game.move({
     from: source,
     to: target,
     promotion: 'q' // NOTE: always promote to a queen for example simplicity
   })
- //console.log(move)	
+ 
   // illegal move
   if (move === null) return 'snapback'
-  //window.setTimeout(makeEngineMove(0), 250)	
-  // make random legal move for black
-  //window.setTimeout(makeRandomMove, 250)
-  board1.position(game.fen())	
-  e = document.getElementById("fen");
+  updateStatus();
+  makeBestMove();
   
-  e.value = game.fen()
-  SubmitFen()
+  myboard.position(game.fen())	
+  ret = getOpeningInfo(game.pgn())
+	if(ret.length == 3) {
+		console.log("ECO: " + ret[0])
+		console.log("White: " + ret[1])
+		console.log("Black: " + ret[2])
+		document.getElementById("openinfo").innerHTML = " Opening Info: " + "ECO: " + ret[0] + " White: " + ret[1] + " Black: " + ret[2];
+	} else {
+		console.log("not found anything")
+	}
+	//getEngineEval()
   //window.setTimeout(makeEngineMove(), 250)
 }
 
 // update the board position after the piece snap
 // for castling, en passant, pawn promotion
 function onSnapEnd () {
-  //board1.position(game.fen())
+  //myboard.position(game.fen())
 }
 function parseFEN(fen) {
   var board = new Array(8);
@@ -310,17 +412,82 @@ function SubmitFenWrap() {
 	if (game.turn() == 'b') {
 		or = "black"
 	}
-	board1.position(game.fen())
+	myboard.position(game.fen())
 	//console.log(game.fen())
-	board1.orientation(or)
+	myboard.orientation(or)
 	SubmitFen()
 }
 function SubmitFen() {
 	document.getElementById("cpscore").innerHTML = "Processing ..."
 	document.getElementById("bestmoves").innerHTML = ""
-	getEngineEval()
+	console.log(game.history())
+	ret = getOpeningInfo(game.pgn())
+	if(ret.length == 3) {
+		console.log("ECO: " + ret[0])
+		console.log("White: " + ret[1])
+		console.log("Black: " + ret[2])
+	} else {
+		console.log("not ound anything")
+	}
+	
+	//getEngineEval()
+	//updateStatus()
+}
+function getOpeningInfo(curpgn) {
+	var ngame = new Chess()
+	ngame.load_pgn(curpgn)
+	var nmoves = ngame.history().join().replace(/,/g, " ");
+	console.log(nmoves)  
+	var retArr = []
+	  for (var i = 0; i < eco_openings.length; i++) {
+		//console.log(eco_openings[i].moves)
+		if (nmoves ==  eco_openings[i].moves)
+		{
+			retArr.push(eco_openings[i].eco)
+			retArr.push(eco_openings[i].white)
+			retArr.push(eco_openings[i].black)
+			return retArr
+		}
+	  }
+	  console.log("nope!")
+	  return retArr
+	//var positionInfoText = "Position: "+(_historyindex+1)+" of "+_history.length+" - Last move: ";
+}
+var newGame = function() {
+    game.reset();
+    var cfg = {
+      draggable: true,
+      position: 'start',
+      onDragStart: onDragStart,
+      onDrop: onDrop,
+      onSnapEnd: onSnapEnd,
+      orientation: elem.options[elem.selectedIndex].value
+    };
+    myboard = ChessBoard('myBoard', cfg);
+	
+    updateStatus();
+
+}
+function changeLevel() {
+		
+	if (this.options[this.selectedIndex].value > 4) {
+		alert("Above level 4, things will get real slow on phones or low powered devices!")
+	}
+}
+
+function Undo() {
+	game.undo();
+	game.undo();
+	myboard.position(game.fen())
+	
 	updateStatus()
 }
+function changeBoard() {
+		newGame()
+		if (this.options[this.selectedIndex].value == 'black') {
+			getMove()
+		}
+	}
 function loadEngine() {
   var engine = {ready: false, kill: false, waiting: true, depth: 15, lastnodes: 0};
   var wasmSupported = typeof WebAssembly === 'object' && WebAssembly.validate(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
@@ -382,5 +549,6 @@ var config = {
   overlay: true
 }
 _engine = loadEngine();
-board1 = Chessboard('myBoard', config)
+
+newGame()
 // --- End Example JS ----------------------------------------------------------

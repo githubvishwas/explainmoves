@@ -31,58 +31,46 @@
 <body>
 
 
+<select class="form-control" id="col1" onchange="changeBoard.call(this, event)" >
+				<option value="white">Play as White</option>
+				<option value="black">Play as Black</option>
+			</select>
+<select class="form-control" id="sel1" onchange="changeLevel.call(this, event)">
+                                <option value="1">Level: 1</option>
+                                <option value="2">Level: 2</option>
+                                <option value="3">Level: 3</option>
+                                <option value="4">Level: 4</option>
+                                <option value="5">Level: 5</option>
+								<option value="6">Level: 6</option>
+                                <option value="7">Level: 7</option>
+                                <option value="8">Level: 8</option>
+                                <option value="9">Level: 9</option>
+                                <option value="10">Level: 10</option>
+                            </select>			
 
-<br></br>
 <!--- Begin Example HTML ------------------------------------------------------>
-<div id="myBoard" style="width: 400px"></div>
+<div id="myBoard" style="width: 350px"></div>
 <!--- End Example HTML -------------------------------------------------------->
-<br></br>
-<!-- <select class="form-control" id="sel1" onchange="changeLevel.call(this, event)"> -->
-                                <!-- <option value="1">Level: 1</option> -->
-                                <!-- <option value="2">Level: 2</option> -->
-                                <!-- <option value="3">Level: 3</option> -->
-                                <!-- <option value="4">Level: 4</option> -->
-                                <!-- <option value="5">Level: 5</option> -->
-								<!-- <option value="6">Level: 6</option> -->
-                                <!-- <option value="7">Level: 7</option> -->
-                                <!-- <option value="8">Level: 8</option> -->
-                                <!-- <option value="9">Level: 9</option> -->
-                                <!-- <option value="10">Level: 10</option> -->
-                            <!-- </select> -->
-<!-- <button type="button" class="btn btn-default" id="undo" onclick="Undo()";>Undo</button>							 -->
-<label id="fenlbl">FEN:</label>
 
-<input type="text" id="fen" value="1k1r4/1p4bp/1p2p3/5p2/P2r2p1/1pRP4/1P2BPPP/1K1R4 b - - 1 31" size="70">
-<button type="button" class="btn btn-default" id="submit" onclick="SubmitFenWrap()";>Go</button>
+<button type="button"  class="btn btn-default" style="width: 100%" id="undo" onclick = Undo()>Undo</button>
+<p id="openinfo" style="padding-left: 2%"> Opening Info: </p>
+<p><span id="pgn" style="padding-left: 2%"></span></p>
+<!-- <button type="button" class="btn btn-default" id="undo" onclick="Undo()";>Undo</button>							 -->
+<!-- <label id="fenlbl">FEN:</label> -->
+
+<!-- <input type="text" id="fen" value="1k1r4/1p4bp/1p2p3/5p2/P2r2p1/1pRP4/1P2BPPP/1K1R4 b - - 1 31" size="70"> -->
+<!-- <button type="button" class="btn btn-default" id="submit" onclick="SubmitFenWrap()";>Go</button> -->
 <p id="cpscore"> </p>
 <p id="bestmoves"> </p>
 <p id="staticevalwin"> </p>
 <p id="staticevallose"> </p>
-<!-- <p id="openinfo"> Opening Info: </p> -->
-<script>
 
-   
-	function changeLevel() {
-		
-		if (this.options[this.selectedIndex].value > 4) {
-			alert("Above level 4, things will get real slow on phones or low powered devices!")
-		}
-	}
 
-	function Undo() {
-		game.undo();
-		game.undo();
-		board1.position(game.fen())
-		
-		updateStatus()
-	}
-         
-    </script>
 <!-- <script src="js/chessboard-1.0.0.min.js"> </script> -->
 <script src="js/chessboard-1.0.0.min.js"> </script>
 <!-- <script src="js/chessboard-0.3.0-r1.js"> </script> -->
 <script src="js/chess.js"> </script>
-<script src="openings.js"> </script>
+<script src="eco_openings.js"> </script>
 <script src="staticeval.js"> </script>
 <script src="sf.js"> </script>
 <script src="script.js"> </script>
