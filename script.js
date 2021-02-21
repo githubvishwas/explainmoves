@@ -24,7 +24,7 @@ var pgnEl = $('#pgn');
 var sdepth = 10
 var prevScore = 0.0
 var currScore = 0.0
-var evalLevel = 5
+var evalLevel = 10
 var evalDepth = 10
 function onDragStart (source, piece, position, orientation) {
   // do not pick up pieces if the game is over
@@ -283,7 +283,7 @@ var makeBestMove = function () {
         alert('Game over');
     }
 };
-function postUserMoveFunc() {
+function Proceed() {
   makeBestMove();
   updateStatus();
   myboard.position(game.fen())	
@@ -418,11 +418,18 @@ function changeLevel() {
 }
 
 function Undo() {
-	game.undo();
-	game.undo();
-	myboard.position(game.fen())
 	
-	updateStatus()
+	
+	game.undo();
+	//game.undo();
+	myboard.position(game.fen())
+	getEngineEval()
+	prevScore = currScore
+	
+	document.getElementById("coachspeak").innerHTML = ""
+	document.getElementById("cpscore").innerHTML = ""
+	document.getElementById("openinfo").innerHTML = ""
+	//updateStatus()
 }
 function changeBoard() {
 		newGame()
