@@ -3,7 +3,7 @@
 // https://github.com/jhlywa/chess.js
 
 var START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-var _engine, _evalengine, _curmoves = [];
+var _engine, _curmoves = [];
 var _history = [[START]], _history2 = null, _historyindex = 0;
 var _flip = false, _edit = false, _info = false, _play = null;
 var _arrow = false, _menu = false;
@@ -22,10 +22,6 @@ var squareClass = 'square-55d63';
 var $myboard = null;
 var pgnEl = $('#pgn');
 var sdepth = 10
-var prevScore = 0.0
-var currScore = 0.0
-var evalLevel = 5
-var evalDepth = 10
 function onDragStart (source, piece, position, orientation) {
   // do not pick up pieces if the game is over
   if (game.game_over()) return false
@@ -40,8 +36,17 @@ function onDragStart (source, piece, position, orientation) {
 var getMove = function () {
 	makeBestMove()
 };
+function makeRandomMove () {
+  var possibleMoves = game.moves()
 
-function updateStatus_bak() {
+  // game over
+  if (possibleMoves.length === 0) return
+
+  var randomIdx = Math.floor(Math.random() * possibleMoves.length)
+  game.move(possibleMoves[randomIdx])
+  myboard.position(game.fen())
+}
+function updateStatus1() {
 	
 	var staticEvalList = getStaticEvalList(game.fen()), total = 0, ci = 5;
 	//console.log(staticEvalList)
@@ -131,7 +136,7 @@ function updateStatus_bak() {
 	//document.getElementById("staticevalwin").innerHTML = txt1
 	//document.getElementById("staticevallose").innerHTML = txt2
 }
-function makeEngineMove () {
+function makeEngineMove (makeMove) {
 	//console.log("start move")
 	_engine.kill = false;
 	_engine.waiting = false;
@@ -139,7 +144,7 @@ function makeEngineMove () {
 	_engine.send("ucinewgame");
 	var e = document.getElementById("sel1");
 	var level = e.options[e.selectedIndex].value;
-	_engine.send("setoption name Skill Level value " + level); 
+	_engine.send("setoption name Skill Level value " + 1); 
 	_engine.score = null;
 	//console.log("eval move")
 	_engine.eval(game.fen(), function done(str) {
@@ -151,7 +156,52 @@ function makeEngineMove () {
 		var target  = matches[1][2] + matches[1][3]  
 		//console.log(source)
 		//console.log(target)
+		if(makeMove == 1) {
+			var move = game.move({
+			from: source,
+			to: target,
+			promotion: 'q' // NOTE: always promote to a queen for example simplicity
+		  })
+
+		  // illegal move
+		  if (move === null) return 'snapback'
+		  myboard.position(game.fen())
+		  updateStatus()
+		  //console.log(getStaticEvalList(game.fen()))
+		}
 		
+	  }
+	},function info(depth, score, pv,str) {
+		console.log("=========")
+		console.log(str)
+        if(depth == sdepth) {
+			console.log(score)
+			//document.getElementById("cpscore").innerHTML = " CP score: " + score/100;
+		}
+      });
+	
+	
+}
+function makeEngineMove1 () {
+	_engine.kill = false;
+	_engine.waiting = false;
+	_engine.send("stop");
+	_engine.send("ucinewgame");
+	var e = document.getElementById("sel1");
+	var level = e.options[e.selectedIndex].value;
+	//console.log(level)
+	_engine.send("setoption name Skill Level value " + level); 
+	_engine.score = null;
+	_engine.eval(game.fen(), function done(str) {
+	  _engine.waiting = true;
+	  
+	  var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+	  if (matches && matches.length > 1) {
+		var source  = matches[1][0] + matches[1][1] 
+		var target  = matches[1][2] + matches[1][3]  
+		//console.log(source)
+		//console.log(target)
+	
 		var move = game.move({
 		from: source,
 		to: target,
@@ -161,30 +211,32 @@ function makeEngineMove () {
 	  // illegal move
 	  if (move === null) return 'snapback'
 	  myboard.position(game.fen())
-	  updateStatus()
-	  //console.log(getStaticEvalList(game.fen()))
+	  updateStatus()	
 	
-		
+	 
+	  
+	  
 	  }
-	});
+	},function info(depth, score, pv, str) {
+		//console.log(str)
+        
+      });
 	
 	
 }
-
 function getEngineEval () {
-	_evalengine.kill = false;
-	_evalengine.waiting = false;
-	_evalengine.send("stop");
-	_evalengine.send("ucinewgame");
+	_engine.kill = false;
+	_engine.waiting = false;
+	_engine.send("stop");
+	_engine.send("ucinewgame");
 	//var e = document.getElementById("sel1");
 	//var level = e.options[e.selectedIndex].value;
-	_evalengine.send("setoption name Skill Level value " + evalLevel); 
-	_evalengine.score = null;
-	_evalengine.eval(game.fen(),function done(str) {}, function info(depth, score, pv, str) {
+	_engine.send("setoption name Skill Level value " + 5); 
+	_engine.score = null;
+	_engine.eval(game.fen(), function info(depth, score, pv, str) {
 		//console.log(depth)
-        if(depth == evalDepth) {
-			//console.log(score)
-			//document.getElementById("cpscore").innerHTML = " CP score: " + score/100;
+        if(depth == sdepth) {
+			
 			if(game.turn() == 'b') {
 				score = score * -1
 			}
@@ -207,32 +259,9 @@ function getEngineEval () {
 				txt = "Looks like " + advcolor + " is dominating"
 			} else {
 				txt = advcolor + " is winning here folks!"
-			}
-			prevScore = currScore
-			currScore = score/100
-				
-			var absdiff = Math.abs(prevScore - currScore)
-			
-			var e = document.getElementById("sel1");
-			var wlevel = e.options[e.selectedIndex].value;
-			if(wlevel != 4) {
-				if(absdiff > 0.5 && absdiff < 1 && game.history().length > 8 && wlevel == 1) {
-					document.getElementById("coachspeak").innerHTML = "Inaccuracy, any better move?";
-				} else if(absdiff > 1 && absdiff < 2 && wlevel >=2) {
-					document.getElementById("coachspeak").innerHTML = "Mistake";
-				} else if(absdiff > 2 ){
-					document.getElementById("coachspeak").innerHTML = "Blunder";
-				} else if(game.history().length < 9){
-					document.getElementById("coachspeak").innerHTML = "Too early to say anything!";
-				} else if(wlevel == 1){
-					document.getElementById("coachspeak").innerHTML = "You seem to be doing well!";
-				}
-				document.getElementById("coachspeak").innerHTML += " " + prevScore + " " + currScore + " " + absdiff 
-				document.getElementById("cpscore").innerHTML = " Score: " + currScore;
-			}
-			
-			//document.getElementById("staticscore").innerHTML = " Static eval: " + _staticscore 
-			//document.getElementById("bestmoves").innerHTML = pv;
+			}			
+			document.getElementById("cpscore").innerHTML = txt + " Static eval: " + _staticscore + " Score: " + score/100;
+			document.getElementById("bestmoves").innerHTML = pv;
 		}
       });
 	
@@ -274,8 +303,7 @@ var makeBestMove = function () {
         alert('Game over');
     }
 
-	makeEngineMove()
-	getEngineEval()
+	makeEngineMove(1)
     myboard.position(game.fen());
 	updateStatus();
    
@@ -283,19 +311,6 @@ var makeBestMove = function () {
         alert('Game over');
     }
 };
-function postUserMoveFunc() {
-  makeBestMove();
-  updateStatus();
-  myboard.position(game.fen())	
-  ret = getOpeningInfo(game.pgn())
-	if(ret.length == 3) {
-		document.getElementById("openinfo").innerHTML = " Opening Info: " + "ECO: " + ret[0] + " White: " + ret[1];
-		if(ret[2] != "") {
-			document.getElementById("openinfo").innerHTML += " Black: " + ret[2];
-		}
-		document.getElementById("openinfo").innerHTML += " moves: " + ret[3];
-	} 
-}
 function onDrop (source, target) {
   
   var move = game.move({
@@ -307,19 +322,24 @@ function onDrop (source, target) {
   // illegal move
   if (move === null) return 'snapback'
   updateStatus();
+  makeBestMove();
   
+  myboard.position(game.fen())	
   ret = getOpeningInfo(game.pgn())
-	if(ret.length == 4) {
+	if(ret.length == 3) {
+		//console.log("ECO: " + ret[0])
+		//console.log("White: " + ret[1])
+		//console.log("Black: " + ret[2])
 		document.getElementById("openinfo").innerHTML = " Opening Info: " + "ECO: " + ret[0] + " White: " + ret[1];
 		if(ret[2] != "") {
 			document.getElementById("openinfo").innerHTML += " Black: " + ret[2];
 		}
 		
-	} 
-	
-  getEngineEval()
-  
-  //postUserMoveFunc()
+	} else {
+		console.log("not found anything")
+	}
+	getEngineEval()
+  //window.setTimeout(makeEngineMove(), 250)
 }
 
 // update the board position after the piece snap
@@ -370,12 +390,42 @@ function parseFEN(fen) {
   //alert({b:board, c:castling, e:enpassant, w:whitemove, m:movecount}) 				   
   return {b:board, c:castling, e:enpassant, w:whitemove, m:movecount};
 }
-
+function SubmitFenWrap() {
+	var e = document.getElementById("fen");
+	var fen = e.value;
+	var or = "white"
+	
+	//console.log(or)
+	game.load(fen)
+	if (game.turn() == 'b') {
+		or = "black"
+	}
+	myboard.position(game.fen())
+	//console.log(game.fen())
+	myboard.orientation(or)
+	SubmitFen()
+}
+function SubmitFen() {
+	document.getElementById("cpscore").innerHTML = "Processing ..."
+	document.getElementById("bestmoves").innerHTML = ""
+	console.log(game.history())
+	ret = getOpeningInfo(game.pgn())
+	if(ret.length == 3) {
+		console.log("ECO: " + ret[0])
+		console.log("White: " + ret[1])
+		console.log("Black: " + ret[2])
+	} else {
+		console.log("not ound anything")
+	}
+	
+	//getEngineEval()
+	//updateStatus()
+}
 function getOpeningInfo(curpgn) {
 	var ngame = new Chess()
 	ngame.load_pgn(curpgn)
 	var nmoves = ngame.history().join().replace(/,/g, " ");
-	//console.log(nmoves)  
+	console.log(nmoves)  
 	var retArr = []
 	  for (var i = 0; i < eco_openings.length; i++) {
 		//console.log(eco_openings[i].moves)
@@ -384,7 +434,6 @@ function getOpeningInfo(curpgn) {
 			retArr.push(eco_openings[i].eco)
 			retArr.push(eco_openings[i].white)
 			retArr.push(eco_openings[i].black)
-			retArr.push(eco_openings[i].moves)
 			return retArr
 		}
 	  }
@@ -392,11 +441,6 @@ function getOpeningInfo(curpgn) {
 	//var positionInfoText = "Position: "+(_historyindex+1)+" of "+_history.length+" - Last move: ";
 }
 var newGame = function() {
-	prevScore = 0.0
-	currScore = 0.0
-	document.getElementById("coachspeak").innerHTML = ""
-	document.getElementById("cpscore").innerHTML = ""
-	document.getElementById("openinfo").innerHTML = ""
     game.reset();
     var cfg = {
       draggable: true,
@@ -481,57 +525,7 @@ function loadEngine() {
   });
   return engine;
 }
-function loadEvalEngine() {
-  var engine = {ready: false, kill: false, waiting: true, depth: evalDepth, lastnodes: 0};
-  var wasmSupported = typeof WebAssembly === 'object' && WebAssembly.validate(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
-  if (typeof(Worker) === "undefined") return engine;
-  var workerData = new Blob([atob(wasmSupported ? sfWasm : sf)], { type: "text/javascript" });
-  try { var worker = new Worker(window.URL.createObjectURL(workerData )); }
-  catch(err) { return engine; }
-  worker.onmessage = function (e) { if (engine.messagefunc) engine.messagefunc(e.data); }
-  engine.send = function send(cmd, message) {
-    cmd = String(cmd).trim();
-    engine.messagefunc = message;
-    worker.postMessage(cmd);
-  };
-  engine.eval = function eval(fen, done, info) {
-    engine.send("position fen " + fen);
-    engine.send("go depth "+ engine.depth, function message(str) {
-	//console.log(str)	
-      var matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+) .*nodes (\d+) .*pv (.+)/);
-      if (!matches) matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+).*/);
-      if (matches) {
-        if (engine.lastnodes == 0) engine.fen = fen;
-        if (matches.length > 4) {
-          var nodes = Number(matches[4]);
-          if (nodes < engine.lastnodes) engine.fen = fen;
-          engine.lastnodes = nodes;
-        }
-        var depth = Number(matches[1]);
-        var type = matches[2];
-        var score = Number(matches[3]);
-        if (type == "mate") score = (1000000 - Math.abs(score)) * (score <= 0 ? -1 : 1);
-        engine.score = score;
-        if (matches.length > 5) {
-          var pv = matches[5].split(" ");
-          if (info != null && engine.fen == fen) info(depth, score, pv,str);
-        }
-      }
-      if (str.indexOf("bestmove") >= 0 || str.indexOf("mate 0") >= 0 || str == "info depth 0 score cp 0") {
-        if (engine.fen == fen) done(str);
-        engine.lastnodes = 0;
-      }
-    });
-  };
-  engine.send("uci", function onuci(str) {
-    if (str === "uciok") {
-      engine.send("isready", function onready(str) {
-        if (str === "readyok") engine.ready = true;
-      });
-    }
-  });
-  return engine;
-}
+
 var config = {
   draggable: true,
   position: 'start',
@@ -541,6 +535,6 @@ var config = {
   overlay: true
 }
 _engine = loadEngine();
-_evalengine = loadEvalEngine();
+
 newGame()
 // --- End Example JS ----------------------------------------------------------
