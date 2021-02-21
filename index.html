@@ -48,17 +48,17 @@
                                 <option value="10">Opponent Level: 10</option>
                             </select>			
 <select class="form-control" id="warn">
-                                <option value="1">Warn me about inaccuracies and above</option>
-                                <option value="2">Warn me about mistakes and above</option>
-                                <option value="3">Warn me about blunders only</option>
+                                <option value="1">Warn me about small mistakes & above</option>
+                                <option value="2">Warn me about mistakes & above</option>
+                                <option value="3">Warn me about big mistakes only</option>
 								<option value="4">Go away, don't bother me</option>
                             </select>		
 <!--- Begin Example HTML ------------------------------------------------------>
 <div id="myBoard" style="width: 350px;padding-left: 5%"></div>
 <!--- End Example HTML -------------------------------------------------------->
-
-<button type="button"  class="btn btn-default" style="width: 100%" id="undo" onclick = Undo()>Undo</button>
 <button type="button"  class="btn btn-default" style="width: 100%" id="proceed" onclick = Proceed()>Confirm Move</button>
+<button type="button"  class="btn btn-default" style="width: 100%" id="undo" onclick = Undo() >Take back move</button>
+<button type="button"  class="btn btn-default" style="width: 100%" id="hint" onclick = Hint() >Hint please!</button>
 <button type="button"  class="btn btn-default" style="width: 100%" id="newgame" onclick = newGame()>New Game</button>
 <p id="openinfo" style="padding-left: 2%"></p>
 <p id="cpscore" style="padding-left: 2%"></p>

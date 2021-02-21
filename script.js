@@ -26,6 +26,12 @@ var prevScore = 0.0
 var currScore = 0.0
 var evalLevel = 10
 var evalDepth = 10
+const proceedBtn = document.getElementById("proceed");
+const undoBtn = document.getElementById("undo");
+const hintBtn = document.getElementById("hint");
+proceedBtn.setAttribute("disabled", "disabled");
+undoBtn.setAttribute("disabled", "disabled");
+hintBtn.setAttribute("disabled", "disabled");
 function onDragStart (source, piece, position, orientation) {
   // do not pick up pieces if the game is over
   if (game.game_over()) return false
@@ -217,18 +223,18 @@ function getEngineEval () {
 			var wlevel = e.options[e.selectedIndex].value;
 			if(wlevel != 4) {
 				if(absdiff > 0.5 && absdiff < 1 && game.history().length > 8 && wlevel == 1) {
-					document.getElementById("coachspeak").innerHTML = "Inaccuracy, any better move?";
+					document.getElementById("coachspeak").innerHTML = "<span style='color: blue;'>Small mistake?</span>";
 				} else if(absdiff > 1 && absdiff < 2 && wlevel >=2) {
-					document.getElementById("coachspeak").innerHTML = "Mistake";
+					document.getElementById("coachspeak").innerHTML = "<span style='color: purple;'>Mistake?</span>";
 				} else if(absdiff > 2 ){
-					document.getElementById("coachspeak").innerHTML = "Blunder";
+					document.getElementById("coachspeak").innerHTML = "<span style='color: red;'>Big mistake?</span>";
 				} else if(game.history().length < 9){
-					document.getElementById("coachspeak").innerHTML = "Too early to say anything!";
+					document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>Too early to say anything!</span>";;
 				} else if(wlevel == 1){
-					document.getElementById("coachspeak").innerHTML = "You seem to be doing well!";
+					document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>Good move</span>";;
 				}
-				document.getElementById("coachspeak").innerHTML += " " + prevScore + " " + currScore + " " + absdiff 
-				document.getElementById("cpscore").innerHTML = " Score: " + currScore;
+				//document.getElementById("coachspeak").innerHTML += " " + prevScore + " " + currScore + " " + absdiff 
+				//document.getElementById("cpscore").innerHTML = " Score: " + currScore;
 			}
 			
 			//document.getElementById("staticscore").innerHTML = " Static eval: " + _staticscore 
@@ -295,6 +301,13 @@ function Proceed() {
 		}
 		document.getElementById("openinfo").innerHTML += " moves: " + ret[3];
 	} 
+	
+	proceedBtn.setAttribute("disabled", "disabled");
+	proceedBtn.style.background = ''
+	undoBtn.setAttribute("disabled", "disabled");
+	undoBtn.style.background = ''
+	hintBtn.setAttribute("disabled", "disabled");
+	hintBtn.style.background = ''
 }
 function onDrop (source, target) {
   
@@ -318,7 +331,12 @@ function onDrop (source, target) {
 	} 
 	
   getEngineEval()
-  
+  proceedBtn.removeAttribute("disabled");
+  proceedBtn.style.background = 'lightgreen'
+  undoBtn.removeAttribute("disabled");
+  undoBtn.style.background = 'lightgreen'
+  hintBtn.style.background = 'lightgreen'
+  hintBtn.removeAttribute("disabled");
   //postUserMoveFunc()
 }
 
