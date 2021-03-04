@@ -23,9 +23,14 @@ var $myboard = null;
 var pgnEl = $('#pgn');
 var sdepth = 10
 var prevScore = 0.0
+var prevScore_bakup = 0.0
 var currScore = 0.0
+var currScore_bakup = 0.0
 var evalLevel = 10
 var evalDepth = 10
+var mybestmove = ""
+var computersbestmove = ""
+var thebestmove = ""
 const proceedBtn = document.getElementById("proceed");
 const undoBtn = document.getElementById("undo");
 const hintBtn = document.getElementById("hint");
@@ -36,8 +41,8 @@ function onDragStart (source, piece, position, orientation) {
   // do not pick up pieces if the game is over
   if (game.game_over()) return false
 	if (game.game_over() === true ||
-      (game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-      (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+      (elem.options[elem.selectedIndex].value == 'white' && piece.search(/^b/) !== -1) ||
+      (elem.options[elem.selectedIndex].value == 'black' && piece.search(/^w/) !== -1)) {
     return false;
   }
   // only pick up pieces for White
@@ -177,7 +182,7 @@ function makeEngineMove () {
 	
 }
 
-function getEngineEval () {
+function getEngineEval (optflag = 0) {
 	_evalengine.kill = false;
 	_evalengine.waiting = false;
 	_evalengine.send("stop");
@@ -218,20 +223,31 @@ function getEngineEval () {
 			currScore = score/100
 				
 			var absdiff = Math.abs(prevScore - currScore)
+			console.log("prevScore:" + prevScore)
+			console.log("currScore:" + currScore)
+			console.log("Abs Diff:" + absdiff)
 			
-			var e = document.getElementById("sel1");
+			prevScore_bakup = prevScore
+			currScore_bakup = currScore
+			var e = document.getElementById("warn");
 			var wlevel = e.options[e.selectedIndex].value;
 			if(wlevel != 4) {
 				if(absdiff > 0.5 && absdiff < 1 && game.history().length > 8 && wlevel == 1) {
 					document.getElementById("coachspeak").innerHTML = "<span style='color: blue;'>Small mistake?</span>";
-				} else if(absdiff > 1 && absdiff < 2 && wlevel >=2) {
+				} else if(absdiff > 1 && absdiff < 2 && wlevel >= 2) {
 					document.getElementById("coachspeak").innerHTML = "<span style='color: purple;'>Mistake?</span>";
 				} else if(absdiff > 2 ){
 					document.getElementById("coachspeak").innerHTML = "<span style='color: red;'>Big mistake?</span>";
 				} else if(game.history().length < 9){
-					document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>Too early to say anything!</span>";;
-				} else if(wlevel == 1){
+					document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>Too early to say anything! (Go ahead and confirm your move!)</span>";;
+				} else {
 					document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>Good move</span>";;
+				} 
+				
+				if(optflag == 1) {
+					document.getElementById("coachspeak").innerHTML = ""
+					document.getElementById("cpscore").innerHTML = ""
+					//document.getElementById("openinfo").innerHTML = ""
 				}
 				//document.getElementById("coachspeak").innerHTML += " " + prevScore + " " + currScore + " " + absdiff 
 				//document.getElementById("cpscore").innerHTML = " Score: " + currScore;
@@ -239,6 +255,12 @@ function getEngineEval () {
 			
 			//document.getElementById("staticscore").innerHTML = " Static eval: " + _staticscore 
 			//document.getElementById("bestmoves").innerHTML = pv;
+			if(optflag == 2) {
+				mybestmove = pv
+			} else if(optflag == 3) {
+				computersbestmove = pv
+			}
+			
 		}
       });
 	
@@ -281,7 +303,8 @@ var makeBestMove = function () {
     }
 
 	makeEngineMove()
-	getEngineEval()
+	getEngineEval(2)
+	
     myboard.position(game.fen());
 	updateStatus();
    
@@ -329,8 +352,9 @@ function onDrop (source, target) {
 		}
 		
 	} 
-	
-  getEngineEval()
+  document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>Analyzing your move ...</span>";;	
+  getEngineEval(3)
+  
   proceedBtn.removeAttribute("disabled");
   proceedBtn.style.background = 'lightgreen'
   undoBtn.removeAttribute("disabled");
@@ -434,19 +458,22 @@ function changeLevel() {
 		alert("Above level 4, things will get real slow on phones or low powered devices!")
 	}
 }
+function Hint() {
+	var source1  = mybestmove[1][0] + mybestmove[1][1] 
+	var target1  = mybestmove[1][2] + mybestmove[1][3]  
+	var source2  = computersbestmove[1][0] + computersbestmove[1][1] 
+	var target2  = computersbestmove[1][2] + computersbestmove[1][3] 
 
+	document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>What if computer plays " + source1 + " to " + target1 +"<br/>I think you should play " + source2 + " to " + target2 + "</span>";;
+		
+}
 function Undo() {
-	
-	
 	game.undo();
 	//game.undo();
 	myboard.position(game.fen())
-	getEngineEval()
-	prevScore = currScore
-	
-	document.getElementById("coachspeak").innerHTML = ""
-	document.getElementById("cpscore").innerHTML = ""
-	document.getElementById("openinfo").innerHTML = ""
+	getEngineEval(1)
+	currScore = prevScore_bakup
+	undoBtn.setAttribute("disabled", "disabled");
 	//updateStatus()
 }
 function changeBoard() {
@@ -567,5 +594,7 @@ var config = {
 }
 _engine = loadEngine();
 _evalengine = loadEvalEngine();
+
 newGame()
+
 // --- End Example JS ----------------------------------------------------------
