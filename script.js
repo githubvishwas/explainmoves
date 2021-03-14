@@ -14,6 +14,7 @@ var _nncache = null;
 var _staticSortByChange = false;
 var evalUnit = 213;
 var myboard = null
+var overlay = null
 var game = new Chess()
 var curengeval = 0.0
 var _staticscore = 0.0
@@ -31,6 +32,9 @@ var evalDepth = 10
 var mybestmove = ""
 var computersbestmove = ""
 var thebestmove = ""
+const UNDO_FLAG = 1
+const EVAL_COMP_MOVE = 2
+const EVAL_MY_MOVE = 3
 const proceedBtn = document.getElementById("proceed");
 const undoBtn = document.getElementById("undo");
 const hintBtn = document.getElementById("hint");
@@ -173,6 +177,7 @@ function makeEngineMove () {
 	  if (move === null) return 'snapback'
 	  myboard.position(game.fen())
 	  updateStatus()
+	  getEngineEval(EVAL_COMP_MOVE)
 	  //console.log(getStaticEvalList(game.fen()))
 	
 		
@@ -191,7 +196,18 @@ function getEngineEval (optflag = 0) {
 	//var level = e.options[e.selectedIndex].value;
 	_evalengine.send("setoption name Skill Level value " + evalLevel); 
 	_evalengine.score = null;
-	_evalengine.eval(game.fen(),function done(str) {}, function info(depth, score, pv, str) {
+	_evalengine.eval(game.fen(),function done(str) {
+		var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+		if (matches && matches.length > 1) {
+			var source  = matches[1][0] + matches[1][1] 
+			var target  = matches[1][2] + matches[1][3]
+			if(optflag == EVAL_COMP_MOVE) {
+				mybestmove = source + " to " + target
+			} else if(optflag == EVAL_MY_MOVE) {
+				computersbestmove = source + " to " + target
+			}
+		}	
+	}, function info(depth, score, pv, str) {
 		//console.log(depth)
         if(depth == evalDepth) {
 			//console.log(score)
@@ -244,7 +260,7 @@ function getEngineEval (optflag = 0) {
 					document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>Good move</span>";;
 				} 
 				
-				if(optflag == 1) {
+				if(optflag == UNDO_FLAG) {
 					document.getElementById("coachspeak").innerHTML = ""
 					document.getElementById("cpscore").innerHTML = ""
 					//document.getElementById("openinfo").innerHTML = ""
@@ -255,11 +271,8 @@ function getEngineEval (optflag = 0) {
 			
 			//document.getElementById("staticscore").innerHTML = " Static eval: " + _staticscore 
 			//document.getElementById("bestmoves").innerHTML = pv;
-			if(optflag == 2) {
-				mybestmove = pv
-			} else if(optflag == 3) {
-				computersbestmove = pv
-			}
+						
+			
 			
 		}
       });
@@ -303,10 +316,11 @@ var makeBestMove = function () {
     }
 
 	makeEngineMove()
-	getEngineEval(2)
-	
-    myboard.position(game.fen());
+	myboard.position(game.fen());
 	updateStatus();
+	
+	
+    
    
     if (game.game_over()) {
         alert('Game over');
@@ -353,7 +367,7 @@ function onDrop (source, target) {
 		
 	} 
   document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>Analyzing your move ...</span>";;	
-  getEngineEval(3)
+  getEngineEval(EVAL_MY_MOVE)
   
   proceedBtn.removeAttribute("disabled");
   proceedBtn.style.background = 'lightgreen'
@@ -449,6 +463,7 @@ var newGame = function() {
       orientation: elem.options[elem.selectedIndex].value
     };
     myboard = ChessBoard('myBoard', cfg);
+    
     updateStatus();
 
 }
@@ -459,12 +474,12 @@ function changeLevel() {
 	}
 }
 function Hint() {
-	var source1  = mybestmove[1][0] + mybestmove[1][1] 
-	var target1  = mybestmove[1][2] + mybestmove[1][3]  
-	var source2  = computersbestmove[1][0] + computersbestmove[1][1] 
-	var target2  = computersbestmove[1][2] + computersbestmove[1][3] 
+	// var source1  = mybestmove[1][0] + mybestmove[1][1] 
+	// var target1  = mybestmove[1][2] + mybestmove[1][3]  
+	// var source2  = computersbestmove[1][0] + computersbestmove[1][1] 
+	// var target2  = computersbestmove[1][2] + computersbestmove[1][3] 
 
-	document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>What if computer plays " + source1 + " to " + target1 +"<br/>I think you should play " + source2 + " to " + target2 + "</span>";;
+	document.getElementById("coachspeak").innerHTML = "<span style='color: green;'>What if computer plays " + computersbestmove +"<br/>I think you should play " + mybestmove + "</span>";;
 		
 }
 function Undo() {
@@ -533,6 +548,41 @@ function loadEngine() {
   });
   return engine;
 }
+function drawArrow(fromx, fromy, tox, toy,linewidth = 22, linecolor = "#cc0000"){
+            //variables to be used when creating the arrow
+            var c = document.getElementById("drawing_canvas");
+            var ctx = c.getContext("2d");
+            var headlen = 10;
+
+            var angle = Math.atan2(toy-fromy,tox-fromx);
+
+            //starting path of the arrow from the start square to the end square and drawing the stroke
+            ctx.beginPath();
+            ctx.moveTo(fromx, fromy);
+            ctx.lineTo(tox, toy);
+            ctx.strokeStyle = linecolor;
+            ctx.lineWidth = linewidth;
+            ctx.stroke();
+
+            //starting a new path from the head of the arrow to one of the sides of the point
+            ctx.beginPath();
+            ctx.moveTo(tox, toy);
+            ctx.lineTo(tox-headlen*Math.cos(angle-Math.PI/7),toy-headlen*Math.sin(angle-Math.PI/7));
+
+            //path from the side point of the arrow, to the other side point
+            ctx.lineTo(tox-headlen*Math.cos(angle+Math.PI/7),toy-headlen*Math.sin(angle+Math.PI/7));
+
+            //path from the side point back to the tip of the arrow, and then again to the opposite side point
+            ctx.lineTo(tox, toy);
+            ctx.lineTo(tox-headlen*Math.cos(angle-Math.PI/7),toy-headlen*Math.sin(angle-Math.PI/7));
+
+            //draws the paths created above
+            ctx.strokeStyle = linecolor;
+            ctx.lineWidth = linewidth;
+            ctx.stroke();
+            ctx.fillStyle = linecolor;
+            ctx.fill();
+        }
 function loadEvalEngine() {
   var engine = {ready: false, kill: false, waiting: true, depth: evalDepth, lastnodes: 0};
   var wasmSupported = typeof WebAssembly === 'object' && WebAssembly.validate(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
@@ -596,5 +646,6 @@ _engine = loadEngine();
 _evalengine = loadEvalEngine();
 
 newGame()
-
+drawArrow(21, 50, 285, 315,15)
+drawArrow(21, 315, 288, 50,15,'#00FF00')
 // --- End Example JS ----------------------------------------------------------
